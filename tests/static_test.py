@@ -30,7 +30,14 @@ def test_manifest_references_existing_files():
 def test_permissions_are_expected_for_mvp():
     manifest = json.loads(read_text("manifest.json"))
     assert set(manifest["permissions"]) == {"activeTab", "contextMenus", "storage"}
-    assert manifest["host_permissions"] == ["http://*/*", "https://*/*"]
+    assert "http://*/*" not in manifest["host_permissions"]
+    assert "https://*/*" not in manifest["host_permissions"]
+    assert set(manifest["host_permissions"]) == {"http://127.0.0.1/*", "http://localhost/*"}
+    assert manifest["optional_host_permissions"] == ["https://*/*"]
+    csp = manifest["content_security_policy"]["extension_pages"]
+    assert "script-src 'self'" in csp
+    assert "object-src 'none'" in csp
+    assert "connect-src" in csp
 
 
 def test_context_menu_and_backend_flow_exist():
@@ -42,7 +49,13 @@ def test_context_menu_and_backend_flow_exist():
     assert "Check executable risk" in worker
     assert "dlxBackendUrl" in inspector
     assert "/inspect" in inspector
+    assert "chrome.permissions.contains" in inspector
+    assert "chrome.permissions.request" in read_text("src/ui/options.js")
     assert "VT_API_KEY" in backend
+    assert "DLX_BACKEND_TOKEN" in backend
+    assert "x-dlx-client" in inspector
+    assert "x-dlx-token" in inspector
+    assert "Missing extension client header" in backend
     assert "/files/" in backend
     assert "/urls/" in backend
 
@@ -67,18 +80,41 @@ def test_no_embedded_virustotal_key():
         assert not key_pattern.search(path.read_text(encoding="utf-8")), path
 
 
+def test_no_runtime_html_injection_or_wildcard_cors():
+    runtime_files = [
+        "src/ui/inspect.js",
+        "src/ui/options.js",
+        "src/ui/popup.js",
+        "src/content/content.js",
+        "src/background/service-worker.js",
+    ]
+    for relative in runtime_files:
+      text = read_text(relative)
+      assert "innerHTML" not in text, relative
+      assert "insertAdjacentHTML" not in text, relative
+      assert "document.write" not in text, relative
+      assert "eval(" not in text, relative
+      assert "new Function" not in text, relative
+
+    backend = read_text("backend/server.js")
+    assert '"access-control-allow-origin": "*"' not in backend
+    assert "origin.startsWith(\"chrome-extension://\")" in backend
+
+
 def test_backend_has_ssrf_controls():
     backend = read_text("backend/server.js")
     for expected in [
         "localhost",
         "127",
-        "192.168",
+        "a === 192 && b === 168",
         "172",
         "10",
         "dns.lookup",
-        "redirect: \"manual\"",
+        "lookup:",
         "MAX_REDIRECTS",
         "MAX_HASH_BYTES",
+        "MAX_URL_LENGTH",
+        "URLs with embedded credentials",
     ]:
       assert expected in backend
 
@@ -90,6 +126,7 @@ if __name__ == "__main__":
         test_context_menu_and_backend_flow_exist,
         test_popup_exposes_global_and_site_toggles,
         test_no_embedded_virustotal_key,
+        test_no_runtime_html_injection_or_wildcard_cors,
         test_backend_has_ssrf_controls,
     ]
     for test in tests:

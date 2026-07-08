@@ -42,7 +42,7 @@ function renderSummary(summary) {
   }
 
   best.classList.remove("hidden");
-  best.innerHTML = "";
+  best.replaceChildren();
   const title = document.createElement("h2");
   title.textContent = "Top candidate";
   const verdict = document.createElement("p");

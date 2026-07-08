@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Download Link X-Ray",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Highlights likely real download links and lets you inspect executable risk before you click.",
   "permissions": [
     "activeTab",
@@ -9,9 +9,15 @@
     "storage"
   ],
   "host_permissions": [
-    "http://*/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "optional_host_permissions": [
     "https://*/*"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; connect-src 'self' https://* http://127.0.0.1:* http://localhost:*;"
+  },
   "background": {
     "service_worker": "src/background/service-worker.js"
   },

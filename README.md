@@ -44,11 +44,21 @@ With VirusTotal:
 VT_API_KEY=your_key_here node backend/server.js
 ```
 
+With an optional backend token for a hosted/shared backend:
+
+```bash
+DLX_BACKEND_TOKEN=change_me VT_API_KEY=your_key_here node backend/server.js
+```
+
 Then open the extension options page and set:
 
 ```text
 http://127.0.0.1:8787
 ```
+
+For a remote backend, use HTTPS and set the same backend token in the extension options page.
+When you save a remote backend URL, Chrome will ask for host permission for that backend origin only.
+The backend does not enable wildcard CORS by default; set `DLX_ALLOWED_ORIGINS` only if you intentionally need browser-origin access outside the extension.
 
 ## Test
 
@@ -62,3 +72,4 @@ npm test
 - The backend does not bypass captchas, timers, login walls, paywalls, or JavaScript-generated protected links.
 - Deep checks do hash lookup only. It does not auto-upload binaries to VirusTotal.
 - Hashing is capped at 64 MB by default. Change with `DLX_MAX_HASH_BYTES`.
+- The backend blocks private/reserved targets and pins DNS resolution during checks, but a public deployment should still sit behind normal rate limiting.

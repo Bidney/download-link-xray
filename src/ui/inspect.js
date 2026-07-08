@@ -30,7 +30,7 @@ function verdictClass(result) {
 
 function renderLocal(result) {
   const container = document.getElementById("local");
-  container.innerHTML = "";
+  container.replaceChildren();
   container.append(el("h2", "Local link analysis"));
   const badge = el("span", `${result.verdict} · score ${result.score}`, `badge ${verdictClass(result)}`);
   container.append(badge);
@@ -44,7 +44,7 @@ function renderLocal(result) {
   const link = el("a", "Open VirusTotal URL page", "button");
   link.href = vtUrl;
   link.target = "_blank";
-  link.rel = "noreferrer";
+  link.rel = "noopener noreferrer";
   container.append(link);
 }
 
@@ -56,7 +56,7 @@ function vtStats(verdict) {
 
 function renderBackend(data) {
   const container = document.getElementById("backend");
-  container.innerHTML = "";
+  container.replaceChildren();
   container.append(el("h2", "Backend inspection"));
   if (!data.ok) {
     container.append(el("p", data.error || "Backend check failed.", "muted"));
@@ -78,7 +78,7 @@ function renderBackend(data) {
     const fileLink = el("a", "Open VirusTotal file page", "button");
     fileLink.href = `https://www.virustotal.com/gui/file/${data.sha256}`;
     fileLink.target = "_blank";
-    fileLink.rel = "noreferrer";
+    fileLink.rel = "noopener noreferrer";
     container.append(fileLink);
   }
   if (data.virusTotalFile) {
@@ -89,9 +89,9 @@ function renderBackend(data) {
 
 async function checkBackend() {
   const container = document.getElementById("backend");
-  const settings = await chrome.storage.local.get({ dlxBackendUrl: "" });
+  const settings = await chrome.storage.local.get({ dlxBackendUrl: "", dlxBackendToken: "" });
   if (!settings.dlxBackendUrl) {
-    container.innerHTML = "";
+    container.replaceChildren();
     container.append(el("h2", "Backend inspection"));
     container.append(el("p", "Configure a backend URL in Options for redirect following, hashing, and VirusTotal API checks.", "muted"));
     const options = el("button", "Open options");
@@ -100,13 +100,29 @@ async function checkBackend() {
     return;
   }
 
-  container.innerHTML = "";
+  const validation = globalThis.DLXBackendUrl.validateBackendUrl(settings.dlxBackendUrl, { allowEmpty: false });
+  if (!validation.ok) {
+    renderBackend({ ok: false, error: validation.error });
+    return;
+  }
+  const originPattern = globalThis.DLXBackendUrl.backendOriginPattern(validation.value);
+  if (originPattern) {
+    const hasPermission = await chrome.permissions.contains({ origins: [originPattern] });
+    if (!hasPermission) {
+      renderBackend({ ok: false, error: "Backend host permission missing. Open Options and save the backend URL again." });
+      return;
+    }
+  }
+
+  container.replaceChildren();
   container.append(el("h2", "Backend inspection"));
   container.append(el("p", "Checking..."));
-  const apiUrl = new URL("/inspect", settings.dlxBackendUrl);
+  const apiUrl = new URL("/inspect", validation.value);
   apiUrl.searchParams.set("url", inspectedUrl);
   apiUrl.searchParams.set("deep", mode === "deep" ? "1" : "0");
-  const response = await fetch(apiUrl.href, { cache: "no-store" });
+  const headers = { "x-dlx-client": "download-link-xray" };
+  if (settings.dlxBackendToken) headers["x-dlx-token"] = settings.dlxBackendToken;
+  const response = await fetch(apiUrl.href, { cache: "no-store", headers });
   const data = await response.json();
   renderBackend(data);
 }

@@ -4,30 +4,53 @@
 const crypto = require("crypto");
 const dns = require("dns/promises");
 const http = require("http");
+const https = require("https");
 const net = require("net");
 const { URL } = require("url");
 const scoring = require("../src/shared/scoring");
 
 const PORT = Number(process.env.PORT || 8787);
 const VT_API_KEY = process.env.VT_API_KEY || "";
+const BACKEND_TOKEN = process.env.DLX_BACKEND_TOKEN || "";
+const ALLOWED_ORIGINS = new Set(
+  String(process.env.DLX_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+);
 const MAX_REDIRECTS = Number(process.env.DLX_MAX_REDIRECTS || 8);
 const MAX_HASH_BYTES = Number(process.env.DLX_MAX_HASH_BYTES || 64 * 1024 * 1024);
 const REQUEST_TIMEOUT_MS = Number(process.env.DLX_TIMEOUT_MS || 12000);
+const MAX_URL_LENGTH = Number(process.env.DLX_MAX_URL_LENGTH || 4096);
 const USER_AGENT = "DownloadLinkXRay/0.1 (+https://localhost)";
 
-function json(res, status, payload) {
+function securityHeaders(req) {
+  const headers = {
+    "cache-control": "no-store",
+    "content-type": "application/json; charset=utf-8",
+    "x-content-type-options": "nosniff"
+  };
+  const origin = req?.headers?.origin || "";
+  if (origin && (origin.startsWith("chrome-extension://") || ALLOWED_ORIGINS.has(origin))) {
+    headers["access-control-allow-origin"] = origin;
+    headers.vary = "Origin";
+  }
+  return headers;
+}
+
+function json(req, res, status, payload) {
   const body = JSON.stringify(payload, null, 2);
   res.writeHead(status, {
-    "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET, OPTIONS",
-    "access-control-allow-headers": "content-type",
-    "content-type": "application/json; charset=utf-8",
+    ...securityHeaders(req),
     "content-length": Buffer.byteLength(body)
   });
   res.end(body);
 }
 
 function parseHttpUrl(rawUrl) {
+  if (!rawUrl || String(rawUrl).length > MAX_URL_LENGTH) {
+    throw new Error("URL is missing or too long");
+  }
   let parsed;
   try {
     parsed = new URL(rawUrl);
@@ -37,16 +60,22 @@ function parseHttpUrl(rawUrl) {
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     throw new Error("Only http:// and https:// URLs are supported");
   }
-  parsed.username = "";
-  parsed.password = "";
+  if (parsed.username || parsed.password) {
+    throw new Error("URLs with embedded credentials are not supported");
+  }
   return parsed;
+}
+
+function normalizeHostname(hostname) {
+  return String(hostname || "").toLowerCase().replace(/^\[|\]$/g, "");
 }
 
 function isPrivateIp(address) {
   if (!address) return true;
-  const ipVersion = net.isIP(address);
+  const normalized = normalizeHostname(address);
+  const ipVersion = net.isIP(normalized);
   if (ipVersion === 4) {
-    const parts = address.split(".").map(Number);
+    const parts = normalized.split(".").map(Number);
     if (parts.length !== 4 || parts.some((part) => Number.isNaN(part))) return true;
     const [a, b] = parts;
     return a === 0 ||
@@ -61,22 +90,27 @@ function isPrivateIp(address) {
       (a === 198 && (b === 18 || b === 19));
   }
   if (ipVersion === 6) {
-    const lower = address.toLowerCase();
+    const lower = normalized;
+    const mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    if (mapped) return isPrivateIp(mapped[1]);
+    const firstHextet = Number.parseInt(lower.split(":")[0] || "0", 16);
     return lower === "::1" ||
       lower === "::" ||
-      lower.startsWith("fc") ||
-      lower.startsWith("fd") ||
-      lower.startsWith("fe80:") ||
-      lower.startsWith("::ffff:10.") ||
-      lower.startsWith("::ffff:127.") ||
-      lower.startsWith("::ffff:192.168.");
+      lower.startsWith("64:ff9b:1:") ||
+      lower.startsWith("100:") ||
+      lower.startsWith("2001:2:") ||
+      lower.startsWith("2001:db8:") ||
+      lower.startsWith("2002:") ||
+      (firstHextet >= 0xfc00 && firstHextet <= 0xfdff) ||
+      (firstHextet >= 0xfe80 && firstHextet <= 0xfebf) ||
+      (firstHextet >= 0xff00 && firstHextet <= 0xffff);
   }
   return true;
 }
 
-async function assertPublicTarget(rawUrl) {
+async function resolvePublicTarget(rawUrl) {
   const parsed = parseHttpUrl(rawUrl);
-  const host = parsed.hostname.toLowerCase();
+  const host = normalizeHostname(parsed.hostname);
   if (host === "localhost" || host.endsWith(".localhost") || host === "local") {
     throw new Error("Localhost targets are blocked");
   }
@@ -91,7 +125,14 @@ async function assertPublicTarget(rawUrl) {
   if (privateAddress) {
     throw new Error(`Private or reserved target blocked: ${privateAddress.address}`);
   }
-  return parsed;
+  return {
+    parsed,
+    address: addresses[0]
+  };
+}
+
+async function assertPublicTarget(rawUrl) {
+  return (await resolvePublicTarget(rawUrl)).parsed;
 }
 
 function withTimeout() {
@@ -102,15 +143,53 @@ function withTimeout() {
 }
 
 async function safeFetch(rawUrl, options = {}) {
-  const parsed = await assertPublicTarget(rawUrl);
-  return fetch(parsed.href, {
-    ...options,
+  const { parsed, address } = await resolvePublicTarget(rawUrl);
+  const transport = parsed.protocol === "https:" ? https : http;
+  const method = options.method || "GET";
+  const normalizedHost = normalizeHostname(parsed.hostname);
+  const requestOptions = {
+    protocol: parsed.protocol,
+    hostname: normalizedHost,
+    port: parsed.port || undefined,
+    path: `${parsed.pathname}${parsed.search}`,
+    method,
     headers: {
-      "user-agent": USER_AGENT,
-      ...(options.headers || {})
+      ...(options.headers || {}),
+      host: parsed.host,
+      "user-agent": USER_AGENT
     },
-    redirect: "manual",
-    signal: withTimeout()
+    lookup: (_hostname, _lookupOptions, callback) => {
+      callback(null, address.address, address.family || net.isIP(address.address));
+    },
+    servername: normalizedHost,
+    timeout: REQUEST_TIMEOUT_MS
+  };
+
+  return new Promise((resolve, reject) => {
+    const req = transport.request(requestOptions, (res) => {
+      const headers = {
+        get(name) {
+          const value = res.headers[String(name || "").toLowerCase()];
+          if (Array.isArray(value)) return value.join(", ");
+          return value || null;
+        }
+      };
+      res.cancel = () => {
+        res.destroy();
+        return Promise.resolve();
+      };
+      resolve({
+        status: res.statusCode || 0,
+        ok: (res.statusCode || 0) >= 200 && (res.statusCode || 0) < 300,
+        url: parsed.href,
+        headers,
+        body: res
+      });
+    });
+
+    req.on("timeout", () => req.destroy(new Error("Request timed out")));
+    req.on("error", reject);
+    req.end();
   });
 }
 
@@ -281,23 +360,36 @@ async function inspectUrl(rawUrl, deep) {
 
 async function route(req, res) {
   if (req.method === "OPTIONS") {
-    res.writeHead(204, {
-      "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET, OPTIONS",
-      "access-control-allow-headers": "content-type"
-    });
+    const headers = securityHeaders(req);
+    if (headers["access-control-allow-origin"]) {
+      headers["access-control-allow-methods"] = "GET, OPTIONS";
+      headers["access-control-allow-headers"] = "content-type, x-dlx-client, x-dlx-token";
+      res.writeHead(204, headers);
+    } else {
+      res.writeHead(403, { "x-content-type-options": "nosniff" });
+    }
     res.end();
     return;
   }
 
   const requestUrl = new URL(req.url, `http://${req.headers.host || "127.0.0.1"}`);
   if (requestUrl.pathname === "/health") {
-    json(res, 200, { ok: true, vtConfigured: Boolean(VT_API_KEY) });
+    json(req, res, 200, { ok: true, vtConfigured: Boolean(VT_API_KEY), tokenRequired: Boolean(BACKEND_TOKEN) });
     return;
   }
 
   if (requestUrl.pathname !== "/inspect") {
-    json(res, 404, { ok: false, error: "Not found" });
+    json(req, res, 404, { ok: false, error: "Not found" });
+    return;
+  }
+
+  if (req.headers["x-dlx-client"] !== "download-link-xray") {
+    json(req, res, 403, { ok: false, error: "Missing extension client header" });
+    return;
+  }
+
+  if (BACKEND_TOKEN && req.headers["x-dlx-token"] !== BACKEND_TOKEN) {
+    json(req, res, 401, { ok: false, error: "Invalid backend token" });
     return;
   }
 
@@ -305,16 +397,16 @@ async function route(req, res) {
   const deep = requestUrl.searchParams.get("deep") === "1";
   try {
     const result = await inspectUrl(target, deep);
-    json(res, 200, result);
+    json(req, res, 200, result);
   } catch (error) {
-    json(res, 400, { ok: false, error: error.message });
+    json(req, res, 400, { ok: false, error: error.message });
   }
 }
 
 function start() {
   const server = http.createServer((req, res) => {
     route(req, res).catch((error) => {
-      json(res, 500, { ok: false, error: error.message });
+      json(req, res, 500, { ok: false, error: error.message });
     });
   });
   server.listen(PORT, "127.0.0.1", () => {
@@ -331,10 +423,12 @@ if (require.main === module) {
 module.exports = {
   inspectUrl,
   inspectRedirects,
+  assertPublicTarget,
   isPrivateIp,
   looksExecutableFromMetadata,
   parseHttpUrl,
   filenameFromContentDisposition,
+  resolvePublicTarget,
   scoring,
   start
 };

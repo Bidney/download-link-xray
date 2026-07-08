@@ -2,6 +2,8 @@
   "use strict";
 
   const BADGE_CLASS = "dlx-badge";
+  const MAX_CANDIDATES = 300;
+  const MAX_TEXT_LENGTH = 300;
   const HIGHLIGHT_CLASSES = [
     "dlx-highlight-real",
     "dlx-highlight-executable",
@@ -78,7 +80,7 @@
       element.getAttribute?.("title"),
       element.querySelector?.("img")?.getAttribute("alt")
     ];
-    return pieces.filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+    return pieces.filter(Boolean).join(" ").replace(/\s+/g, " ").trim().slice(0, MAX_TEXT_LENGTH);
   }
 
   function elementToCandidate(element) {
@@ -110,6 +112,7 @@
     return [...document.querySelectorAll(selector)]
       .filter((element) => !element.closest(`.${BADGE_CLASS}`))
       .filter(visibleElement)
+      .slice(0, MAX_CANDIDATES)
       .map((element) => ({ element, candidate: elementToCandidate(element) }));
   }
 

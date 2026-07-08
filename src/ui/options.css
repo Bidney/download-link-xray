@@ -23,6 +23,7 @@ label {
   display: grid;
   font-weight: 700;
   gap: 8px;
+  margin-bottom: 14px;
 }
 
 input {
