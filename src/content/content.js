@@ -10,6 +10,8 @@
   ];
   const state = {
     enabled: true,
+    globalEnabled: true,
+    siteEnabled: true,
     lastSummary: null,
     observer: null,
     debounce: 0,
@@ -17,8 +19,37 @@
   };
 
   function loadSettings() {
-    if (typeof chrome === "undefined" || !chrome.storage?.local) return Promise.resolve({ dlxEnabled: true });
-    return chrome.storage.local.get({ dlxEnabled: true });
+    if (typeof chrome === "undefined" || !chrome.storage?.local) {
+      return Promise.resolve({ dlxEnabled: true, dlxSiteDisabled: {} });
+    }
+    return chrome.storage.local.get({ dlxEnabled: true, dlxSiteDisabled: {} });
+  }
+
+  function disabledSummary(reason) {
+    return {
+      total: 0,
+      marked: 0,
+      best: null,
+      suspicious: 0,
+      executables: 0,
+      disabled: true,
+      reason
+    };
+  }
+
+  function applySettings(settings) {
+    const siteDisabled = settings.dlxSiteDisabled || {};
+    state.globalEnabled = Boolean(settings.dlxEnabled);
+    state.siteEnabled = !Boolean(siteDisabled[location.hostname]);
+    state.enabled = state.globalEnabled && state.siteEnabled;
+
+    if (state.enabled) {
+      return scanAndMark();
+    }
+
+    clearMarks();
+    state.lastSummary = disabledSummary(state.globalEnabled ? "site-disabled" : "global-disabled");
+    return state.lastSummary;
   }
 
   function visibleElement(element) {
@@ -142,7 +173,10 @@
   }
 
   function scanAndMark() {
-    if (!state.enabled || !globalThis.DLXScoring) return null;
+    if (!state.enabled || !globalThis.DLXScoring) {
+      state.lastSummary = disabledSummary(state.globalEnabled ? "site-disabled" : "global-disabled");
+      return state.lastSummary;
+    }
     state.marking = true;
     try {
       clearMarks();
@@ -214,7 +248,8 @@
           sendResponse(scanAndMark());
         } else {
           clearMarks();
-          sendResponse({ enabled: false });
+          state.lastSummary = disabledSummary("manual-disabled");
+          sendResponse(state.lastSummary);
         }
         return true;
       }
@@ -222,9 +257,17 @@
     });
   }
 
+  if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== "local") return;
+      if (changes.dlxEnabled || changes.dlxSiteDisabled) {
+        loadSettings().then(applySettings);
+      }
+    });
+  }
+
   loadSettings().then((settings) => {
-    state.enabled = Boolean(settings.dlxEnabled);
-    if (state.enabled) scanAndMark();
+    applySettings(settings);
     observePage();
   });
 })();

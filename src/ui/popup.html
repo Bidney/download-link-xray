@@ -10,11 +10,27 @@
     <main>
       <header>
         <h1>Download Link X-Ray</h1>
-        <label class="toggle">
-          <input id="enabled" type="checkbox">
-          <span>Highlight links</span>
-        </label>
       </header>
+
+      <section class="switches" aria-label="Extension controls">
+        <label class="switch-row">
+          <span>
+            <strong>Highlight links</strong>
+            <small>Global extension setting</small>
+          </span>
+          <input id="enabled" type="checkbox" aria-label="Enable Download Link X-Ray globally">
+        </label>
+
+        <label class="switch-row">
+          <span>
+            <strong>This site</strong>
+            <small id="siteLabel">Current tab</small>
+          </span>
+          <input id="siteEnabled" type="checkbox" aria-label="Enable Download Link X-Ray on this site">
+        </label>
+      </section>
+
+      <p id="status" class="status" role="status"></p>
 
       <section class="summary" id="summary">
         <div class="metric">

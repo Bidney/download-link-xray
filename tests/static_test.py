@@ -47,6 +47,19 @@ def test_context_menu_and_backend_flow_exist():
     assert "/urls/" in backend
 
 
+def test_popup_exposes_global_and_site_toggles():
+    popup_html = read_text("src/ui/popup.html")
+    popup_js = read_text("src/ui/popup.js")
+    content_js = read_text("src/content/content.js")
+
+    assert 'id="enabled"' in popup_html
+    assert 'id="siteEnabled"' in popup_html
+    assert "dlxSiteDisabled" in popup_js
+    assert "hostnameFromTab" in popup_js
+    assert "dlxSiteDisabled" in content_js
+    assert "site-disabled" in content_js
+
+
 def test_no_embedded_virustotal_key():
     key_pattern = re.compile(r"x-apikey\s*:\s*['\"][a-z0-9]{20,}", re.IGNORECASE)
     for path in ROOT.rglob("*"):
@@ -75,6 +88,7 @@ if __name__ == "__main__":
         test_manifest_references_existing_files,
         test_permissions_are_expected_for_mvp,
         test_context_menu_and_backend_flow_exist,
+        test_popup_exposes_global_and_site_toggles,
         test_no_embedded_virustotal_key,
         test_backend_has_ssrf_controls,
     ]

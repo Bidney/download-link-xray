@@ -7,6 +7,10 @@ Chrome MV3 extension that highlights likely real download links, flags likely fa
 - Page overlay for likely real download links.
 - Red badges for likely ad/redirect traps.
 - Orange badges for executable-style files such as `.exe`, `.msi`, `.dmg`, `.apk`, `.jar`, `.ps1`.
+- Pinned extension popup controls:
+  - global on/off
+  - current-site on/off
+  - rescan current page
 - Right-click menu on links:
   - `Inspect download link`
   - `Check executable risk`
