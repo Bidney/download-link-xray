@@ -1,0 +1,104 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: #f6f7f9;
+  color: #1f252d;
+  font: 13px/1.45 Arial, sans-serif;
+  margin: 0;
+  width: 340px;
+}
+
+main {
+  padding: 14px;
+}
+
+header {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+h1 {
+  font-size: 16px;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.toggle {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.summary {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 14px 0;
+}
+
+.metric {
+  background: #fff;
+  border: 1px solid #d8dde5;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+
+.metric strong {
+  display: block;
+  font-size: 20px;
+}
+
+.metric span {
+  color: #5d6875;
+  display: block;
+  font-size: 11px;
+}
+
+.best {
+  background: #fff;
+  border: 1px solid #d8dde5;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 10px;
+  word-break: break-word;
+}
+
+.best h2 {
+  font-size: 12px;
+  margin: 0 0 6px;
+}
+
+.best p {
+  margin: 4px 0;
+}
+
+.hidden {
+  display: none;
+}
+
+footer {
+  display: flex;
+  gap: 8px;
+}
+
+button {
+  background: #1f5fd0;
+  border: 0;
+  border-radius: 7px;
+  color: #fff;
+  cursor: pointer;
+  flex: 1;
+  font: inherit;
+  font-weight: 700;
+  padding: 9px 10px;
+}
+
+button + button {
+  background: #344054;
+}

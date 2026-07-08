@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Download Link X-Ray Options</title>
+    <link rel="stylesheet" href="options.css">
+  </head>
+  <body>
+    <main>
+      <h1>Download Link X-Ray Options</h1>
+      <label>
+        Backend URL
+        <input id="backend" type="url" placeholder="http://127.0.0.1:8787">
+      </label>
+      <p>
+        The backend follows redirects, hashes executable downloads, and queries VirusTotal without exposing API keys in the extension.
+      </p>
+      <button id="save" type="button">Save</button>
+      <output id="status"></output>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

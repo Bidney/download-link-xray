@@ -1,0 +1,53 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: #f6f7f9;
+  color: #1f252d;
+  font: 14px/1.5 Arial, sans-serif;
+  margin: 0;
+}
+
+main {
+  margin: 40px auto;
+  max-width: 620px;
+  padding: 0 18px;
+}
+
+h1 {
+  font-size: 22px;
+}
+
+label {
+  display: grid;
+  font-weight: 700;
+  gap: 8px;
+}
+
+input {
+  border: 1px solid #cbd3df;
+  border-radius: 7px;
+  font: inherit;
+  padding: 10px 12px;
+}
+
+p {
+  color: #5d6875;
+}
+
+button {
+  background: #1f5fd0;
+  border: 0;
+  border-radius: 7px;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 10px 14px;
+}
+
+output {
+  color: #16823a;
+  margin-left: 12px;
+}

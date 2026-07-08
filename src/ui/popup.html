@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Download Link X-Ray</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Download Link X-Ray</h1>
+        <label class="toggle">
+          <input id="enabled" type="checkbox">
+          <span>Highlight links</span>
+        </label>
+      </header>
+
+      <section class="summary" id="summary">
+        <div class="metric">
+          <strong id="marked">-</strong>
+          <span>marked</span>
+        </div>
+        <div class="metric">
+          <strong id="suspicious">-</strong>
+          <span>suspicious</span>
+        </div>
+        <div class="metric">
+          <strong id="executables">-</strong>
+          <span>executables</span>
+        </div>
+      </section>
+
+      <section id="best" class="best hidden"></section>
+
+      <footer>
+        <button id="rescan" type="button">Rescan page</button>
+        <button id="options" type="button">Options</button>
+      </footer>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

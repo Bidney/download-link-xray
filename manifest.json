@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Download Link X-Ray",
+  "version": "0.1.0",
+  "description": "Highlights likely real download links and lets you inspect executable risk before you click.",
+  "permissions": [
+    "activeTab",
+    "contextMenus",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "src/background/service-worker.js"
+  },
+  "action": {
+    "default_title": "Download Link X-Ray",
+    "default_popup": "src/ui/popup.html"
+  },
+  "options_page": "src/ui/options.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "css": [
+        "src/content/content.css"
+      ],
+      "js": [
+        "src/shared/scoring.js",
+        "src/content/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

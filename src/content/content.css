@@ -1,0 +1,64 @@
+.dlx-highlight-real,
+.dlx-highlight-executable,
+.dlx-highlight-suspicious,
+.dlx-highlight-unknown {
+  outline-offset: 3px !important;
+  transition: outline-color 120ms ease, box-shadow 120ms ease !important;
+}
+
+.dlx-highlight-real {
+  outline: 3px solid #16823a !important;
+  box-shadow: 0 0 0 2px rgba(22, 130, 58, 0.18) !important;
+}
+
+.dlx-highlight-executable {
+  outline: 3px solid #b46a00 !important;
+  box-shadow: 0 0 0 2px rgba(180, 106, 0, 0.2) !important;
+}
+
+.dlx-highlight-suspicious {
+  outline: 3px solid #bd2c2c !important;
+  box-shadow: 0 0 0 2px rgba(189, 44, 44, 0.16) !important;
+}
+
+.dlx-highlight-unknown {
+  outline: 2px dashed #5a6673 !important;
+}
+
+.dlx-badge {
+  align-items: center !important;
+  border: 1px solid rgba(0, 0, 0, 0.18) !important;
+  border-radius: 6px !important;
+  box-sizing: border-box !important;
+  color: #fff !important;
+  display: inline-flex !important;
+  font: 600 11px/1.2 Arial, sans-serif !important;
+  gap: 4px !important;
+  letter-spacing: 0 !important;
+  margin: 0 0 0 6px !important;
+  max-width: 160px !important;
+  padding: 3px 6px !important;
+  pointer-events: none !important;
+  position: relative !important;
+  text-decoration: none !important;
+  text-transform: none !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+  z-index: 2147483647 !important;
+}
+
+.dlx-badge-real {
+  background: #16823a !important;
+}
+
+.dlx-badge-executable {
+  background: #b46a00 !important;
+}
+
+.dlx-badge-suspicious {
+  background: #bd2c2c !important;
+}
+
+.dlx-badge-unknown {
+  background: #5a6673 !important;
+}
