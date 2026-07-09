@@ -177,9 +177,18 @@
     }
   }
 
-  function hostContains(hostname, fragments) {
+  function hostMatches(hostname, needles) {
     const host = String(hostname || "").toLowerCase();
-    return fragments.some((fragment) => host.includes(fragment));
+    const labels = host.split(/[.-]/).filter(Boolean);
+    return needles.some((needle) => {
+      // Dotted needles are full domains: match the host or one of its subdomains.
+      if (needle.includes(".")) {
+        return host === needle || host.endsWith(`.${needle}`);
+      }
+      // Bare needles are host labels: match a whole label, not any substring
+      // (so "ads" no longer flags "downloads.sourceforge.net").
+      return labels.includes(needle);
+    });
   }
 
   function textIncludes(text, phrases) {
@@ -254,12 +263,12 @@
       warnings.push("Ad-like or misleading wording");
     }
 
-    if (hostContains(parsed.hostname, TRUSTED_FILE_HOSTS)) {
+    if (hostMatches(parsed.hostname, TRUSTED_FILE_HOSTS)) {
       score += 14;
       reasons.push("Known software/file host");
     }
 
-    if (hostContains(parsed.hostname, AD_OR_REDIRECT_HOST_PATTERNS)) {
+    if (hostMatches(parsed.hostname, AD_OR_REDIRECT_HOST_PATTERNS)) {
       score -= 55;
       warnings.push("Known ad or redirect-style host");
     }

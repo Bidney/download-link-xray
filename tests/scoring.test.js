@@ -49,6 +49,28 @@ test("understands Polish download wording", () => {
   assert.notEqual(result.verdict, "suspicious");
 });
 
+test("does not flag download hosts as ad hosts by substring", () => {
+  const result = scoring.scoreCandidate({
+    href: "https://downloads.sourceforge.net/project/tool/tool-setup.zip",
+    label: "Download",
+    pageUrl: "https://sourceforge.net/projects/tool"
+  });
+
+  assert.ok(result.reasons.some((reason) => reason.includes("Known software/file host")));
+  assert.ok(!result.warnings.some((warning) => warning.includes("ad or redirect")));
+  assert.notEqual(result.verdict, "suspicious");
+});
+
+test("does not trust look-alike hosts that merely contain a trusted domain", () => {
+  const result = scoring.scoreCandidate({
+    href: "https://github.com.evil.example/tool/tool-setup.exe",
+    label: "Download",
+    pageUrl: "https://github.com.evil.example"
+  });
+
+  assert.ok(!result.reasons.some((reason) => reason.includes("Known software/file host")));
+});
+
 test("VirusTotal URL IDs are base64url without padding", () => {
   const id = scoring.virusTotalUrlId("https://example.com/download/file.exe");
   assert.doesNotMatch(id, /[+/=]/);
