@@ -23,6 +23,13 @@ test("blocks private and reserved IPv6 ranges", () => {
   assert.equal(backend.isPrivateIp("2606:4700:4700::1111"), false);
 });
 
+test("blocks IPv4-mapped IPv6 loopback in hextet form", () => {
+  assert.equal(backend.isPrivateIp("::ffff:7f00:1"), true);
+  assert.equal(backend.isPrivateIp("::ffff:a00:1"), true);
+  assert.equal(backend.isPrivateIp("::ffff:c0a8:1"), true);
+  assert.equal(backend.isPrivateIp("::ffff:808:808"), false);
+});
+
 test("blocks localhost hostnames before fetch", () => {
   assert.throws(() => backend.parseHttpUrl("file:///etc/passwd"), /Only http/);
   assert.throws(() => backend.parseHttpUrl("https://user:pass@example.com/file.exe"), /credentials/);

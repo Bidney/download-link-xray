@@ -93,6 +93,14 @@ function isPrivateIp(address) {
     const lower = normalized;
     const mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
     if (mapped) return isPrivateIp(mapped[1]);
+    // IPv4-mapped addresses can also be written in hextet form, e.g.
+    // ::ffff:7f00:1 is 127.0.0.1. Decode those to the embedded IPv4 too.
+    const mappedHex = lower.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+    if (mappedHex) {
+      const high = Number.parseInt(mappedHex[1], 16);
+      const low = Number.parseInt(mappedHex[2], 16);
+      return isPrivateIp(`${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`);
+    }
     const firstHextet = Number.parseInt(lower.split(":")[0] || "0", 16);
     return lower === "::1" ||
       lower === "::" ||
